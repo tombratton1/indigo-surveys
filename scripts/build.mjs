@@ -1,0 +1,11 @@
+import {readFile, mkdir, cp, writeFile} from 'node:fs/promises';
+const details = JSON.parse(await readFile('business-details.json', 'utf8'));
+const ready = process.env.LAUNCH_READY === 'true';
+if (ready && ['email','coverage','legalName','legalFooter','serviceModel'].some(key => !details[key]?.trim())) throw new Error('Complete business-details.json before public launch.');
+if (ready && (!process.env.RESEND_API_KEY || !process.env.ENQUIRY_TO_EMAIL || !process.env.ENQUIRY_FROM_EMAIL)) throw new Error('Configure enquiry email before public launch.');
+await mkdir('dist',{recursive:true});
+await cp('public','dist',{recursive:true});
+await writeFile('dist/config.js',`window.INDIGO_CONFIG = ${JSON.stringify({...details,ready}).replaceAll('<','\\u003c')};`);
+await writeFile('dist/robots.txt',ready ? 'User-agent: *\nAllow: /\nSitemap: https://indigosurveys.uk/sitemap.xml\n' : 'User-agent: *\nDisallow: /\n');
+await writeFile('dist/sitemap.xml','<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://indigosurveys.uk/</loc></url></urlset>');
+console.log(ready ? 'Launch build completed.' : 'Preview build completed; launch details and email setup are still required.');
